@@ -919,6 +919,13 @@ button.paper-search-mode:hover {
   display: block;
   border-radius: 3px;
 }
+.pdf-link-preview-status {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
 .pdf-scroll {
   flex: 1 1 auto;
   overflow: auto;

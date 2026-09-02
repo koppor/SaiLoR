@@ -11,6 +11,9 @@ middle, and the **annotation form** on the right, built from the project's schem
 
 - **Pick a paper** from the left list to load its PDF and its form.
 - **Read the PDF** in the middle; its text is selectable, and **Ctrl/Cmd+F** searches within it.
+  Hovering an internal link (a citation, a figure reference) previews its target. While a reference
+  is previewed, **Ctrl/Cmd+J** sends it to [JabRef](https://www.jabref.org/), which parses it into an
+  entry of the open library — enable JabRef's HTTP server first (*Preferences → Network → HTTP server*, port 23119).
 - **Fill in the form** on the right. Repeatable fields (like *Findings* above) show **+ Add** and a
   remove (**×**) control for each entry.
 - **Save** via the *Save* menu, or **Ctrl/Cmd+S**. *Save as…* writes to a new location and
@@ -241,6 +244,7 @@ annotating:
 | Ctrl/Cmd+Shift+S | Save as… |
 | Ctrl/Cmd+Z / Shift+Z | Undo / redo an annotation change |
 | Ctrl/Cmd+F | Search within the PDF |
+| Ctrl/Cmd+J | Send the hovered reference to JabRef |
 | Ctrl/Cmd+scroll | Zoom the PDF |
 | a | Highlight the current PDF selection with the first color |
 | Alt+↓ / `]` | Next paper |

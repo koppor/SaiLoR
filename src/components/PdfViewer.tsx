@@ -417,10 +417,17 @@ export function PdfViewer() {
     img: string
     width: number
     height: number
+    /** The fitted bibliography entry's text — what Ctrl+J sends to JabRef.
+     *  `null` when the preview is a page-window fallback (figure, TOC, …). */
+    entryText: string | null
   } | null>(null)
+  // Ctrl+J → JabRef result, shown inside the preview popup (the popup is the
+  // only surface that is guaranteed to be on screen while the key is pressed).
+  const [jabrefStatus, setJabrefStatus] = useState<string | null>(null)
   const hideLinkPreview = () => {
     linkHoverTokenRef.current++ // invalidates any in-flight resolution too
     setLinkPreview(null)
+    setJabrefStatus(null)
   }
 
   // Jump history (back/forward for in-PDF link jumps). Scroll positions before a
@@ -1110,7 +1117,7 @@ export function PdfViewer() {
     doc: PDFDocumentProxy,
     pageNum: number,
     annotationId: string,
-  ): Promise<{ img: string; width: number; height: number } | null> => {
+  ): Promise<{ img: string; width: number; height: number; entryText: string | null } | null> => {
     const srcPage = await doc.getPage(pageNum)
     const annots: { id: string; url?: string; dest?: string | unknown[] }[] = await srcPage.getAnnotations()
     const annot = annots.find((a) => a.id === annotationId)
@@ -1172,7 +1179,12 @@ export function PdfViewer() {
     if (!ctx) return null
     ctx.drawImage(canvas, crop.x * scale, crop.y * scale, crop.w * scale, crop.h * scale, 0, 0, out.width, out.height)
     const fit = Math.min(1, LINK_PREVIEW_MAX_W / crop.w, LINK_PREVIEW_MAX_H / crop.h)
-    return { img: out.toDataURL(), width: Math.round(crop.w * fit), height: Math.round(crop.h * fit) }
+    return {
+      img: out.toDataURL(),
+      width: Math.round(crop.w * fit),
+      height: Math.round(crop.h * fit),
+      entryText: entry?.text ?? null,
+    }
   }
 
   // Hover handlers for pdf.js's annotation-layer links, delegated from the
@@ -1278,6 +1290,31 @@ export function PdfViewer() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Ctrl/Cmd+J while a reference preview is up pushes that entry's text to
+  // JabRef (its HTTP server parses it and adds it to the open library) —
+  // the SumatraPDF shortcut, so both readers behave the same.
+  useEffect(() => {
+    const entryText = linkPreview?.entryText
+    if (!entryText) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || (e.key !== 'j' && e.key !== 'J')) return
+      e.preventDefault()
+      setJabrefStatus('Sending to JabRef…')
+      getPlatform()
+        .pushToJabRef(entryText)
+        .then(({ status, body }) => {
+          if (status >= 200 && status < 300) return setJabrefStatus('Reference sent to JabRef')
+          // JabRef answers errors with a stack trace; its last non-empty line
+          // is the "Caused by" message, the one worth showing.
+          const detail = body.trim().split('\n').filter(Boolean).pop()?.slice(0, 200)
+          setJabrefStatus(`JabRef returned HTTP ${status}${detail ? `: ${detail}` : ''}`)
+        })
+        .catch(() => setJabrefStatus('Could not reach JabRef. Enable its HTTP server (port 23119).'))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [linkPreview])
 
   // Ctrl/Cmd+wheel zooms the PDF (matching pinch-to-zoom-via-ctrl+wheel that
   // browsers/trackpads synthesize) instead of scrolling it. Needs a real DOM
@@ -1896,6 +1933,11 @@ export function PdfViewer() {
             }}
           >
             <img src={linkPreview.img} width={linkPreview.width} height={linkPreview.height} alt="Preview of the link's destination" />
+            {jabrefStatus && (
+              <div className="pdf-link-preview-status" role="status" aria-live="polite">
+                {jabrefStatus}
+              </div>
+            )}
           </div>,
           document.body,
         )}

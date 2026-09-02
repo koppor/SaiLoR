@@ -17,7 +17,9 @@
  *  item's top-left, `w`/`h` its rendered extent. */
 export type PreviewTextItem = { str: string; x: number; y: number; w: number; h: number }
 
-export type EntryBox = { x: number; y: number; w: number; h: number }
+/** The fitted box plus the entry's text (items joined left-to-right, lines
+ *  top-to-bottom) — what "push to JabRef" sends for parsing. */
+export type EntryBox = { x: number; y: number; w: number; h: number; text: string }
 
 /** Items within this Δy belong to the same text line. */
 const LINE_BAND = 3
@@ -148,5 +150,15 @@ export function detectEntryBox(
       maxY = Math.max(maxY, it.y + it.h)
     }
   }
-  return { x: minX - PAD, y: minY - PAD, w: maxX - minX + 2 * PAD, h: maxY - minY + 2 * PAD }
+  // pdf.js items usually carry their own spaces, but a word-per-item page
+  // (like the test fixture) does not — put one in wherever the glyphs
+  // actually leave a gap.
+  const text = included
+    .map((run) =>
+      run.items.map((it, i) => (i > 0 && it.x - (run.items[i - 1].x + run.items[i - 1].w) > 1 ? ' ' : '') + it.str).join(''),
+    )
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return { x: minX - PAD, y: minY - PAD, w: maxX - minX + 2 * PAD, h: maxY - minY + 2 * PAD, text }
 }

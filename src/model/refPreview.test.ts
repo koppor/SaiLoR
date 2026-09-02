@@ -23,6 +23,11 @@ function referenceList(): PreviewTextItem[] {
 }
 
 describe('detectEntryBox', () => {
+  it('returns the entry text in reading order', () => {
+    const box = detectEntryBox(referenceList(), 50, 130, PAGE_H)
+    expect(box?.text).toBe('13. Stacy, W., Macmillan, J.: Cognitive bias in software engineering. Commun. ACM 38(6), 57-63 (1995)')
+  })
+
   it('fits a numbered hanging-indent entry: all its lines, not the next entry', () => {
     // Link to entry 13: dest points at its first line.
     const box = detectEntryBox(referenceList(), 50, 128, PAGE_H)

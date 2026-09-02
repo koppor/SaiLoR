@@ -15,6 +15,7 @@ const ANNOTATE_KEYS: Array<[string, string]> = [
   [`${MOD}+Z`, 'Undo annotation change'],
   [`${MOD}+Shift+Z`, 'Redo annotation change'],
   [`${MOD}+F`, 'Search within the PDF'],
+  [`${MOD}+J`, 'Send the hovered reference to JabRef'],
   [`${MOD} + / ${MOD} -`, 'Zoom the PDF in / out'],
   [`${MOD}+0`, 'Reset PDF zoom'],
   ['Alt+↓  /  ]', 'Next paper'],
@@ -264,6 +265,8 @@ function annotateHelp(): { lead: ReactNode; sections: HelpSection[] } {
               <strong>Read the PDF</strong> in the middle pane; its text is selectable. Use{' '}
               <strong>{MOD}+F</strong> to search within it. After following an internal link (e.g. a
               reference), the <em>↩ / ↪</em> buttons jump back to where you were and forward again.
+              Hovering an internal link previews its target; while a reference is previewed,{' '}
+              <strong>{MOD}+J</strong> sends it to JabRef (its HTTP server must be enabled).
             </li>
             <li>
               <strong>Annotate</strong> on the right. Repeatable entries show <em>+ Add</em> and a

@@ -1572,6 +1572,23 @@ ipcMain.handle(
   },
 )
 
+// ---- JabRef: push a hovered reference (Ctrl+J) ----
+//
+// JabRef's HTTP server (Preferences → Network → HTTP server, port 23119)
+// parses a plain-text citation into an entry and adds it to the current
+// library. Loopback only, so unlike `llm:call` there is no key and no origin
+// to guard. A refused connection rejects; JabRef's own 4xx/5xx come back with
+// their body so the renderer can show what it said.
+ipcMain.handle('jabref:push', async (_e, entryText: string) => {
+  const res = await net.fetch('http://127.0.0.1:23119/libraries/current/entries', {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: entryText,
+    signal: AbortSignal.timeout(60_000), // JabRef may run an LLM over the text; don't hang past that
+  })
+  return { status: res.status, body: await res.text() }
+})
+
 // ---- Git: run the user's own git binary ----
 //
 // The whole feature lives here rather than in a library because the user asked
