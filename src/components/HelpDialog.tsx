@@ -265,8 +265,9 @@ function annotateHelp(): { lead: ReactNode; sections: HelpSection[] } {
               <strong>Read the PDF</strong> in the middle pane; its text is selectable. Use{' '}
               <strong>{MOD}+F</strong> to search within it. After following an internal link (e.g. a
               reference), the <em>↩ / ↪</em> buttons jump back to where you were and forward again.
-              Hovering an internal link previews its target; while a reference is previewed,{' '}
-              <strong>{MOD}+J</strong> sends it to JabRef (its HTTP server must be enabled).
+              Hovering an internal link previews its target. For a reference, the preview also
+              shows whether JabRef already has it (its HTTP server must be enabled), and{' '}
+              <strong>{MOD}+J</strong> adds it to the current JabRef library.
             </li>
             <li>
               <strong>Annotate</strong> on the right. Repeatable entries show <em>+ Add</em> and a

@@ -197,6 +197,10 @@ export function destinationPoint(dest: unknown[]): { x: number | null; y: number
   }
 }
 
+/** Badge states of the JabRef lookup/push shown in the link preview; the
+ *  CSS colours follow SumatraPDF's (grey / mint / olive / orange). */
+type JabRefBadge = 'busy' | 'none' | 'active' | 'other' | 'error'
+
 /** On-screen size cap (CSS px) for the internal-link hover preview. The crop
  *  is scaled down to fit this box when it's larger — never clipped, so a wide
  *  reference entry shows whole lines, just smaller. */
@@ -421,13 +425,15 @@ export function PdfViewer() {
      *  `null` when the preview is a page-window fallback (figure, TOC, …). */
     entryText: string | null
   } | null>(null)
-  // Ctrl+J → JabRef result, shown inside the preview popup (the popup is the
-  // only surface that is guaranteed to be on screen while the key is pressed).
-  const [jabrefStatus, setJabrefStatus] = useState<string | null>(null)
+  // JabRef badge in the preview popup: the hover-time lookup's answer, then
+  // the Ctrl+J push's. `cacheKey` is JabRef's token for the entry it already
+  // parsed during the lookup, so the push needn't parse (and possibly run an
+  // LLM over) the text a second time. Same states/colours as SumatraPDF.
+  const [jabref, setJabref] = useState<{ kind: JabRefBadge; message: string; cacheKey?: string } | null>(null)
   const hideLinkPreview = () => {
     linkHoverTokenRef.current++ // invalidates any in-flight resolution too
     setLinkPreview(null)
-    setJabrefStatus(null)
+    setJabref(null)
   }
 
   // Jump history (back/forward for in-PDF link jumps). Scroll positions before a
@@ -1291,29 +1297,65 @@ export function PdfViewer() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Ctrl/Cmd+J while a reference preview is up pushes that entry's text to
-  // JabRef (its HTTP server parses it and adds it to the open library) —
-  // the SumatraPDF shortcut, so both readers behave the same.
+  // JabRef, the SumatraPDF way: previewing a bibliography entry asks JabRef
+  // whether it is already in an open library (badge), and Ctrl/Cmd+J adds it
+  // to the current one. Both go through JabRef's HTTP server, which parses
+  // the plain text itself.
   useEffect(() => {
     const entryText = linkPreview?.entryText
     if (!entryText) return
+    let cacheKey: string | undefined
+    let stale = false
+    const jabrefError = (status: number, body: string) => {
+      // JabRef answers errors with a stack trace; its last non-empty line is
+      // the "Caused by" message, the one worth showing.
+      const detail = body.trim().split('\n').filter(Boolean).pop()?.slice(0, 200)
+      return `JabRef returned HTTP ${status}${detail ? `: ${detail}` : ''}`
+    }
+    const unreachable = { kind: 'error' as const, message: 'Could not reach JabRef. Enable its HTTP server (port 23119).' }
+
+    setJabref({ kind: 'busy', message: 'Checking JabRef…' })
+    getPlatform()
+      .jabrefPost('/libraries/current/citations/lookup', entryText)
+      .then(({ status, body }) => {
+        if (stale) return
+        if (status < 200 || status >= 300) return setJabref({ kind: 'error', message: jabrefError(status, body) })
+        const res = JSON.parse(body) as { matches?: unknown[]; matchScope?: string; parserCacheKey?: string }
+        cacheKey = res.parserCacheKey
+        if (res.matchScope === 'active' || (res.matches?.length && res.matchScope !== 'other')) {
+          setJabref({ kind: 'active', message: 'Already in the JabRef library', cacheKey })
+        } else if (res.matchScope === 'other') {
+          setJabref({ kind: 'other', message: 'In another open JabRef library — Ctrl+J adds it to the current one', cacheKey })
+        } else {
+          setJabref({ kind: 'none', message: 'Not in JabRef — Ctrl+J adds it', cacheKey })
+        }
+      })
+      .catch(() => !stale && setJabref(unreachable))
+
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || (e.key !== 'j' && e.key !== 'J')) return
       e.preventDefault()
-      setJabrefStatus('Sending to JabRef…')
-      getPlatform()
-        .pushToJabRef(entryText)
+      setJabref({ kind: 'busy', message: 'Sending to JabRef…' })
+      const platform = getPlatform()
+      // Add by JabRef's parse token when the lookup gave one; 410 means the
+      // token expired, so fall back to sending the text again.
+      const byToken = cacheKey
+        ? platform.jabrefPost(`/libraries/current/citations/${cacheKey}`, null)
+        : Promise.resolve({ status: 410, body: '' })
+      byToken
+        .then((r) => (r.status === 410 ? platform.jabrefPost('/libraries/current/entries', entryText) : r))
         .then(({ status, body }) => {
-          if (status >= 200 && status < 300) return setJabrefStatus('Reference sent to JabRef')
-          // JabRef answers errors with a stack trace; its last non-empty line
-          // is the "Caused by" message, the one worth showing.
-          const detail = body.trim().split('\n').filter(Boolean).pop()?.slice(0, 200)
-          setJabrefStatus(`JabRef returned HTTP ${status}${detail ? `: ${detail}` : ''}`)
+          if (stale) return
+          if (status >= 200 && status < 300) setJabref({ kind: 'active', message: 'Reference sent to JabRef' })
+          else setJabref({ kind: 'error', message: jabrefError(status, body) })
         })
-        .catch(() => setJabrefStatus('Could not reach JabRef. Enable its HTTP server (port 23119).'))
+        .catch(() => !stale && setJabref(unreachable))
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      stale = true
+      window.removeEventListener('keydown', onKey)
+    }
   }, [linkPreview])
 
   // Ctrl/Cmd+wheel zooms the PDF (matching pinch-to-zoom-via-ctrl+wheel that
@@ -1933,9 +1975,10 @@ export function PdfViewer() {
             }}
           >
             <img src={linkPreview.img} width={linkPreview.width} height={linkPreview.height} alt="Preview of the link's destination" />
-            {jabrefStatus && (
+            {jabref && (
               <div className="pdf-link-preview-status" role="status" aria-live="polite">
-                {jabrefStatus}
+                <span className={`pdf-jabref-badge is-${jabref.kind}`} aria-hidden="true" />
+                {jabref.message}
               </div>
             )}
           </div>,

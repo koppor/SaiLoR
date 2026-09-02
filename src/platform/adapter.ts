@@ -235,13 +235,13 @@ export interface PlatformAdapter {
   callLlm(request: LlmHttpRequest, signal?: AbortSignal): Promise<LlmHttpResponse>
 
   /**
-   * Send a bibliography entry's plain text to JabRef's local HTTP server
-   * (`POST /libraries/current/entries`), which parses it into a BibTeX entry
-   * and adds it to the open library. Goes through main for the same CORS
-   * reason as `callLlm`. Rejects when JabRef is not reachable; an HTTP error
-   * comes back as a non-2xx `status` with JabRef's message in `body`.
+   * POST to JabRef's local HTTP server (port 23119): `body` is a bibliography
+   * entry's plain text for the lookup / add endpoints, `null` for the
+   * empty-body add-by-token one. Goes through main for the same CORS reason
+   * as `callLlm`. Rejects when JabRef is not reachable; an HTTP error comes
+   * back as a non-2xx `status` with JabRef's message in `body`.
    */
-  pushToJabRef(entryText: string): Promise<{ status: number; body: string }>
+  jabrefPost(path: string, body: string | null): Promise<{ status: number; body: string }>
 
   /**
    * Git operations against **the user's own git installation**, or `null`

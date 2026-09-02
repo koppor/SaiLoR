@@ -11,9 +11,11 @@ middle, and the **annotation form** on the right, built from the project's schem
 
 - **Pick a paper** from the left list to load its PDF and its form.
 - **Read the PDF** in the middle; its text is selectable, and **Ctrl/Cmd+F** searches within it.
-  Hovering an internal link (a citation, a figure reference) previews its target. While a reference
-  is previewed, **Ctrl/Cmd+J** sends it to [JabRef](https://www.jabref.org/), which parses it into an
-  entry of the open library — enable JabRef's HTTP server first (*Preferences → Network → HTTP server*, port 23119).
+  Hovering an internal link (a citation, a figure reference) previews its target. For a reference,
+  the preview also shows whether [JabRef](https://www.jabref.org/) already has it in an open library
+  (green: yes, olive: in another open library, grey ring: no), and **Ctrl/Cmd+J** adds it to the
+  current JabRef library — enable JabRef's HTTP server first (*Preferences → Network → HTTP server*,
+  port 23119).
 - **Fill in the form** on the right. Repeatable fields (like *Findings* above) show **+ Add** and a
   remove (**×**) control for each entry.
 - **Save** via the *Save* menu, or **Ctrl/Cmd+S**. *Save as…* writes to a new location and

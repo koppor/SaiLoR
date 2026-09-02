@@ -95,7 +95,7 @@ export interface SlrBridge {
   deleteLlmConfig(id: string): Promise<LlmConfig[]>
   callLlm(requestId: string, request: LlmHttpRequest): Promise<LlmHttpResponse>
   abortLlm(requestId: string): void
-  pushToJabRef(entryText: string): Promise<{ status: number; body: string }>
+  jabrefPost(path: string, body: string | null): Promise<{ status: number; body: string }>
   /** Unsaved-changes coordination for a clean quit. */
   setDirty(dirty: boolean): void
   onRequestSave(cb: () => void): void
@@ -410,8 +410,8 @@ export class ElectronAdapter implements PlatformAdapter {
     }
   }
 
-  pushToJabRef(entryText: string): Promise<{ status: number; body: string }> {
-    return bridge().pushToJabRef(entryText)
+  jabrefPost(path: string, body: string | null): Promise<{ status: number; body: string }> {
+    return bridge().jabrefPost(path, body)
   }
 
   // Git: thin pass-throughs to the bridge, except `status`, where the raw

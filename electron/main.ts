@@ -1572,18 +1572,21 @@ ipcMain.handle(
   },
 )
 
-// ---- JabRef: push a hovered reference (Ctrl+J) ----
+// ---- JabRef: look up / push a hovered reference ----
 //
 // JabRef's HTTP server (Preferences → Network → HTTP server, port 23119)
-// parses a plain-text citation into an entry and adds it to the current
-// library. Loopback only, so unlike `llm:call` there is no key and no origin
-// to guard. A refused connection rejects; JabRef's own 4xx/5xx come back with
-// their body so the renderer can show what it said.
-ipcMain.handle('jabref:push', async (_e, entryText: string) => {
-  const res = await net.fetch('http://127.0.0.1:23119/libraries/current/entries', {
+// parses a plain-text citation into an entry and checks or adds it in the
+// current library. Loopback only, so unlike `llm:call` there is no key and
+// no origin to guard — the path is still pinned under /libraries/ so the
+// renderer cannot use this as a general local-port prober. A refused
+// connection rejects; JabRef's own 4xx/5xx come back with their body so the
+// renderer can show what it said.
+ipcMain.handle('jabref:post', async (_e, urlPath: string, body: string | null) => {
+  if (!urlPath.startsWith('/libraries/')) throw new Error(`Refusing JabRef path ${urlPath}`)
+  const res = await net.fetch(`http://127.0.0.1:23119${urlPath}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    body: entryText,
+    headers: body === null ? { 'Content-Length': '0' } : { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: body ?? undefined,
     signal: AbortSignal.timeout(60_000), // JabRef may run an LLM over the text; don't hang past that
   })
   return { status: res.status, body: await res.text() }

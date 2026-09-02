@@ -920,11 +920,40 @@ button.paper-search-mode:hover {
   border-radius: 3px;
 }
 .pdf-link-preview-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-top: 4px;
   font-size: 12px;
   color: var(--muted);
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+/* JabRef badge — SumatraPDF's palette: grey square while busy, hollow grey
+   ring for "not in library", mint = in the current library, olive = in
+   another open library, orange = error / unreachable. */
+.pdf-jabref-badge {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #bbbbbb;
+}
+.pdf-jabref-badge.is-busy {
+  border-radius: 1px;
+  background: #bbbbbb;
+}
+.pdf-jabref-badge.is-active {
+  background: #44bb99;
+  border-color: #44bb99;
+}
+.pdf-jabref-badge.is-other {
+  background: #aaaa00;
+  border-color: #aaaa00;
+}
+.pdf-jabref-badge.is-error {
+  background: #ee7733;
+  border-color: #ee7733;
 }
 .pdf-scroll {
   flex: 1 1 auto;
